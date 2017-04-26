@@ -199,6 +199,7 @@
     </Compile>
     <Compile Include="Identity\GoogleAuthenticatorTokenProvider.cs" />
     <Compile Include="Identity\SmsService.cs" />
+    <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\AccountViewModels.cs" />
     <Compile Include="Models\AdminViewModel.cs" />
     <Compile Include="Identity\ApplicationUser.cs" />
