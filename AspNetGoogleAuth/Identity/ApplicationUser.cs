@@ -7,6 +7,7 @@ namespace AspNetGoogleAuth.Identity
 {
     public class ApplicationUser : IdentityUser
     {
+        // TODO: model this as one to many
         public bool IsGoogleAuthenticatorEnabled { get; set; }
 
         public string GoogleAuthenticatorSecretKey { get; set; }
