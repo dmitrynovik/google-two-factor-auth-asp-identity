@@ -69,6 +69,8 @@ namespace AspNetGoogleAuth.Identity
                 Subject = "SecurityCode",
                 BodyFormat = "Your security code is {0}"
             });
+
+            manager.RegisterTwoFactorProvider("GoogleAuthenticator", new GoogleAuthenticatorTokenProvider());
         }
     }
 }
