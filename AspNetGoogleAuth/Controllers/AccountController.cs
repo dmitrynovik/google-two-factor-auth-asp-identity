@@ -9,6 +9,8 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
+using AspNetGoogleAuth;
+using AspNetGoogleAuth.Identity;
 
 namespace IdentitySample.Controllers
 {

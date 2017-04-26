@@ -5,6 +5,8 @@ using Microsoft.Owin.Security.Cookies;
 using IdentitySample.Models;
 using Owin;
 using System;
+using AspNetGoogleAuth;
+using AspNetGoogleAuth.Identity;
 
 namespace IdentitySample
 {
