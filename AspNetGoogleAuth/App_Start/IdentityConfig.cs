@@ -63,9 +63,10 @@ namespace IdentitySample.Models
 
         private static void EnableTwoFactorAuthentication(ApplicationUserManager manager)
         {
-            // Register two factor authentication providers. This application uses Phone and Emails as a step of receiving a code for verifying the user
-            // You can write your own provider and plug in here.
-
+            //
+            // Register two factor authentication providers.
+            // You can write your own provider and plug in here:
+            //
             manager.RegisterTwoFactorProvider("PhoneCode", new PhoneNumberTokenProvider<ApplicationUser>
             {
                 MessageFormat = "Your security code is: {0}"
