@@ -180,6 +180,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Base32Encoder.cs" />
+    <Compile Include="Claims.cs" />
+    <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="Models\GoogleAuthenticatorViewModel.cs" />
     <Compile Include="Identity\ApplicationRoleManager.cs" />
     <Compile Include="Identity\ApplicationSignInManager.cs" />

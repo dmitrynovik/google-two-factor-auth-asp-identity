@@ -1,14 +1,18 @@
-﻿using IdentitySample.Models;
+﻿using System.Data.Entity;
+using IdentitySample.Models;
 using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 using AspNetGoogleAuth;
+using AspNetGoogleAuth.Extensions;
 using AspNetGoogleAuth.Identity;
 using AspNetGoogleAuth.Models;
+using Microsoft.AspNet.Identity.EntityFramework;
 using OtpSharp;
 
 namespace IdentitySample.Controllers
@@ -52,16 +56,17 @@ namespace IdentitySample.Controllers
                 : "";
 
             var userId = User.Identity.GetUserId();
-            var user = UserManager.Users.Single(u => u.Id == userId);
+            var user = await UserManager.FindByIdAsync(userId);
+            var googleAuthCode = user.Claims.FirstOrDefault(x => x.ClaimType == Claims.GoogleAuthSecret)?.ClaimValue;
 
             var model = new IndexViewModel
             {
                 HasPassword = HasPassword(),
-                PhoneNumber = await UserManager.GetPhoneNumberAsync(User.Identity.GetUserId()),
-                TwoFactor = await UserManager.GetTwoFactorEnabledAsync(User.Identity.GetUserId()),
-                Logins = await UserManager.GetLoginsAsync(User.Identity.GetUserId()),
-                BrowserRemembered = await AuthenticationManager.TwoFactorBrowserRememberedAsync(User.Identity.GetUserId()),
-                IsGoogleAuthenticatorEnabled = user.IsGoogleAuthenticatorEnabled
+                PhoneNumber = await UserManager.GetPhoneNumberAsync(userId),
+                TwoFactor = await UserManager.GetTwoFactorEnabledAsync(userId),
+                Logins = await UserManager.GetLoginsAsync(userId),
+                BrowserRemembered = await AuthenticationManager.TwoFactorBrowserRememberedAsync(userId),
+                IsGoogleAuthenticatorEnabled = !googleAuthCode.IsEmpty()
             };
             return View(model);
         }
@@ -386,12 +391,13 @@ namespace IdentitySample.Controllers
 
         public async Task<ActionResult> DisableGoogleAuthenticator()
         {
-            var user = await UserManager.FindByIdAsync(User.Identity.GetUserId());
-            if (user != null)
+            var uid = User.Identity.GetUserId();
+            var user = await UserManager.FindByIdAsync(uid);
+            var googleAuthClaim = user.Claims.FirstOrDefault(x => x.ClaimType == Claims.GoogleAuthSecret);
+
+            if (user != null && googleAuthClaim != null)
             {
-                user.IsGoogleAuthenticatorEnabled = false;
-                user.GoogleAuthenticatorSecretKey = null;
-                await UserManager.UpdateAsync(user);
+                await UserManager.RemoveClaimAsync(uid, new Claim(googleAuthClaim.ClaimType, googleAuthClaim.ClaimValue));
                 await SignInAsync(user, isPersistent: false);
             }
             return RedirectToAction("Index", "Manage");
@@ -424,8 +430,21 @@ namespace IdentitySample.Controllers
                 if (otp.VerifyTotp(model.Code, out timeStepMatched, new VerificationWindow(2, 2)))
                 {
                     var user = await UserManager.FindByIdAsync(User.Identity.GetUserId());
-                    user.IsGoogleAuthenticatorEnabled = true;
-                    user.GoogleAuthenticatorSecretKey = model.SecretKey;
+                    var googleAuthClaim = user.Claims.FirstOrDefault(x => x.ClaimType == Claims.GoogleAuthSecret);
+                    if (googleAuthClaim == null)
+                    {
+                        googleAuthClaim = new IdentityUserClaim()
+                        {
+                            ClaimType = Claims.GoogleAuthSecret,
+                            ClaimValue = model.SecretKey,
+                            UserId = User.Identity.GetUserId()
+                        };
+                        user.Claims.Add(googleAuthClaim);
+                    }
+                    else
+                    {
+                        googleAuthClaim.ClaimValue = model.SecretKey;
+                    }
                     await UserManager.UpdateAsync(user);
 
                     return RedirectToAction("Index", "Manage");

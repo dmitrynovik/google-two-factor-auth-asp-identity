@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
+using AspNetGoogleAuth.Extensions;
 using Base32;
 using Microsoft.AspNet.Identity;
 using OtpSharp;
@@ -17,7 +19,11 @@ namespace AspNetGoogleAuth.Identity
         {
             long timeStepMatched;
 
-            var otp = new Totp(Base32Encoder.Decode(user.GoogleAuthenticatorSecretKey));
+            var claim = user.Claims.FirstOrDefault(x => x.ClaimType == Claims.GoogleAuthSecret);
+            if (claim == null || claim.ClaimValue.IsEmpty())
+                return Task.FromResult(false);
+
+            var otp = new Totp(Base32Encoder.Decode(claim.ClaimValue));
             // TODO: move window parameters to config
             bool valid = otp.VerifyTotp(token, out timeStepMatched, new VerificationWindow(2, 2));
 
@@ -32,7 +38,8 @@ namespace AspNetGoogleAuth.Identity
 
         public Task<bool> IsValidProviderForUserAsync(UserManager<ApplicationUser, string> manager, ApplicationUser user)
         {
-            return Task.FromResult(user.IsGoogleAuthenticatorEnabled);
+            var claim = user.Claims.FirstOrDefault(x => x.ClaimType == Claims.GoogleAuthSecret);
+            return Task.FromResult(claim != null && !claim.ClaimValue.IsEmpty());
         }
     }
 }

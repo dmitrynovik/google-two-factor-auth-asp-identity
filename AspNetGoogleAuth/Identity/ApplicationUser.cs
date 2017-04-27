@@ -7,11 +7,6 @@ namespace AspNetGoogleAuth.Identity
 {
     public class ApplicationUser : IdentityUser
     {
-        // TODO: model this as one to many
-        public bool IsGoogleAuthenticatorEnabled { get; set; }
-
-        public string GoogleAuthenticatorSecretKey { get; set; }
-
         public async Task<ClaimsIdentity> GenerateUserIdentityAsync(UserManager<ApplicationUser> manager)
         {
             // Note the authenticationType must match the one defined in CookieAuthenticationOptions.AuthenticationType
