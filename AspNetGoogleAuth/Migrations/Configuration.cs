@@ -24,8 +24,12 @@ namespace AspNetGoogleAuth.Migrations
         //Create User=Admin@Admin.com with password=Admin@123456 in the Admin role        
         public static void InitializeIdentityForEntityFramework(ApplicationDbContext db)
         {
-            var userManager = HttpContext.Current.GetOwinContext().GetUserManager<ApplicationUserManager>();
-            var roleManager = HttpContext.Current.GetOwinContext().Get<ApplicationRoleManager>();
+            var context = HttpContext.Current?.GetOwinContext();
+            if (context == null)
+                return;
+
+            var userManager = context.GetUserManager<ApplicationUserManager>();
+            var roleManager = context.Get<ApplicationRoleManager>();
             const string name = "admin@example.com";
             const string password = "Admin@123456";
             const string roleName = "Admin";
