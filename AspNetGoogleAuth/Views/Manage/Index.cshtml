@@ -58,7 +58,7 @@
             <form method="post" action="/Manage/ForgetBrowser">
                 <p>
                     Browser is curently remembered for two factor:
-                    <input type="submit" value="Forget Browser" class="btn btn-default" />
+                    <input type="submit" value="Forget Browser" class="btn btn-default"/>
                 </p>
             </form>
         }
@@ -71,5 +71,18 @@
                 </p>
             </form>
         }
+
+        <p>
+            Google Authenticator Enabled: @(Model.IsGoogleAuthenticatorEnabled)
+            @if (Model.IsGoogleAuthenticatorEnabled)
+            {
+                @Html.ActionLink("[Disable]", "DisableGoogleAuthenticator")
+            }
+            else
+            {
+                @Html.ActionLink("[Enable]", "EnableGoogleAuthenticator")
+            }
+        </p>
     </div>
 </div>
+

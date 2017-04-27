@@ -6,7 +6,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
+using AspNetGoogleAuth;
 using AspNetGoogleAuth.Identity;
+using AspNetGoogleAuth.Models;
+using OtpSharp;
 
 namespace IdentitySample.Controllers
 {
@@ -332,7 +335,6 @@ namespace IdentitySample.Controllers
             return result.Succeeded ? RedirectToAction("ManageLogins") : RedirectToAction("ManageLogins", new { Message = ManageMessageId.Error });
         }
 
-        #region Helpers
         // Used for XSRF protection when adding external logins
         private const string XsrfKey = "XsrfId";
 
@@ -378,6 +380,59 @@ namespace IdentitySample.Controllers
             return false;
         }
 
+        public async Task<ActionResult> DisableGoogleAuthenticator()
+        {
+            var user = await UserManager.FindByIdAsync(User.Identity.GetUserId());
+            if (user != null)
+            {
+                user.IsGoogleAuthenticatorEnabled = false;
+                user.GoogleAuthenticatorSecretKey = null;
+                await UserManager.UpdateAsync(user);
+                await SignInAsync(user, isPersistent: false);
+            }
+            return RedirectToAction("Index", "Manage");
+        }
+
+        [HttpGet]
+        public ActionResult EnableGoogleAuthenticator()
+        {
+            byte[] secretKey = KeyGeneration.GenerateRandomKey(20);
+            string userName = User.Identity.GetUserName();
+            string barcodeUrl = KeyUrl.GetTotpUrl(secretKey, userName) + "&issuer=MySuperApplication";
+
+            var model = new GoogleAuthenticatorViewModel
+            {
+                SecretKey = Base32Encoder.Encode(secretKey),
+                BarcodeUrl = HttpUtility.UrlEncode(barcodeUrl)
+            };
+            return View(model);
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> EnableGoogleAuthenticator(GoogleAuthenticatorViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                byte[] secretKey = Base32Encoder.Decode(model.SecretKey);
+
+                long timeStepMatched = 0;
+                var otp = new Totp(secretKey);
+                if (otp.VerifyTotp(model.Code, out timeStepMatched, new VerificationWindow(2, 2)))
+                {
+                    var user = await UserManager.FindByIdAsync(User.Identity.GetUserId());
+                    user.IsGoogleAuthenticatorEnabled = true;
+                    user.GoogleAuthenticatorSecretKey = model.SecretKey;
+                    await UserManager.UpdateAsync(user);
+
+                    return RedirectToAction("Index", "Manage");
+                }
+                else
+                    ModelState.AddModelError("Code", "The Code is not valid");
+            }
+
+            return View(model);
+        }
+
         public enum ManageMessageId
         {
             AddPhoneSuccess,
@@ -388,7 +443,5 @@ namespace IdentitySample.Controllers
             RemovePhoneSuccess,
             Error
         }
-
-        #endregion
     }
 }
