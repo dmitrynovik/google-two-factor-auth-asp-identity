@@ -55,17 +55,17 @@ namespace IdentitySample.Controllers
                 : message == ManageMessageId.RemovePhoneSuccess ? "Your phone number was removed."
                 : "";
 
-            var userId = User.Identity.GetUserId();
-            var user = await UserManager.FindByIdAsync(userId);
-            var googleAuthCode = user.Claims.FirstOrDefault(x => x.ClaimType == Claims.GoogleAuthSecret)?.ClaimValue;
+            var uid = User.Identity.GetUserId();
+            var user = await UserManager.FindByIdAsync(uid);
+            var googleAuthCode = UserManager.GetClaims(uid).FirstOrDefault(x => x.Type == Claims.GoogleAuthSecret)?.Value;
 
             var model = new IndexViewModel
             {
                 HasPassword = HasPassword(),
-                PhoneNumber = await UserManager.GetPhoneNumberAsync(userId),
-                TwoFactor = await UserManager.GetTwoFactorEnabledAsync(userId),
-                Logins = await UserManager.GetLoginsAsync(userId),
-                BrowserRemembered = await AuthenticationManager.TwoFactorBrowserRememberedAsync(userId),
+                PhoneNumber = await UserManager.GetPhoneNumberAsync(uid),
+                TwoFactor = await UserManager.GetTwoFactorEnabledAsync(uid),
+                Logins = await UserManager.GetLoginsAsync(uid),
+                BrowserRemembered = await AuthenticationManager.TwoFactorBrowserRememberedAsync(uid),
                 IsGoogleAuthenticatorEnabled = !googleAuthCode.IsEmpty()
             };
             return View(model);
@@ -393,11 +393,11 @@ namespace IdentitySample.Controllers
         {
             var uid = User.Identity.GetUserId();
             var user = await UserManager.FindByIdAsync(uid);
-            var googleAuthClaim = user.Claims.FirstOrDefault(x => x.ClaimType == Claims.GoogleAuthSecret);
+            var googleAuthClaim = UserManager.GetClaims(uid).FirstOrDefault(x => x.Type == Claims.GoogleAuthSecret);
 
             if (user != null && googleAuthClaim != null)
             {
-                await UserManager.RemoveClaimAsync(uid, new Claim(googleAuthClaim.ClaimType, googleAuthClaim.ClaimValue));
+                await UserManager.RemoveClaimAsync(uid, googleAuthClaim);
                 await SignInAsync(user, isPersistent: false);
             }
             return RedirectToAction("Index", "Manage");
@@ -429,30 +429,23 @@ namespace IdentitySample.Controllers
                 var otp = new Totp(secretKey);
                 if (otp.VerifyTotp(model.Code, out timeStepMatched, new VerificationWindow(2, 2)))
                 {
-                    var user = await UserManager.FindByIdAsync(User.Identity.GetUserId());
-                    var googleAuthClaim = user.Claims.FirstOrDefault(x => x.ClaimType == Claims.GoogleAuthSecret);
+                    var uid = User.Identity.GetUserId();
+                    var user = await UserManager.FindByIdAsync(uid);
+                    var googleAuthClaim = UserManager.GetClaims(uid).FirstOrDefault(x => x.Type == Claims.GoogleAuthSecret);
                     if (googleAuthClaim == null)
                     {
-                        googleAuthClaim = new IdentityUserClaim()
-                        {
-                            ClaimType = Claims.GoogleAuthSecret,
-                            ClaimValue = model.SecretKey,
-                            UserId = User.Identity.GetUserId()
-                        };
-                        user.Claims.Add(googleAuthClaim);
+                        await UserManager.AddClaimAsync(uid, new Claim(Claims.GoogleAuthSecret, model.SecretKey));
                     }
                     else
                     {
-                        googleAuthClaim.ClaimValue = model.SecretKey;
+                        await UserManager.RemoveClaimAsync(uid, new Claim(Claims.GoogleAuthSecret, model.SecretKey));
+                        await UserManager.AddClaimAsync(uid, new Claim(Claims.GoogleAuthSecret, model.SecretKey));
                     }
-                    await UserManager.UpdateAsync(user);
-
                     return RedirectToAction("Index", "Manage");
                 }
                 else
                     ModelState.AddModelError("Code", "The Code is not valid");
             }
-
             return View(model);
         }
 
