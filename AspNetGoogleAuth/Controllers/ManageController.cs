@@ -20,6 +20,17 @@ namespace IdentitySample.Controllers
     [Authorize]
     public class ManageController : Controller
     {
+        public enum ManageMessageId
+        {
+            AddPhoneSuccess,
+            ChangePasswordSuccess,
+            SetTwoFactorSuccess,
+            SetPasswordSuccess,
+            RemoveLoginSuccess,
+            RemovePhoneSuccess,
+            Error
+        }
+
         public ManageController()
         {
         }
@@ -302,15 +313,16 @@ namespace IdentitySample.Controllers
         // GET: /Account/Manage
         public async Task<ActionResult> ManageLogins(ManageMessageId? message)
         {
-            ViewBag.StatusMessage =
-                message == ManageMessageId.RemoveLoginSuccess ? "The external login was removed."
+            ViewBag.StatusMessage = message == ManageMessageId.RemoveLoginSuccess ? "The external login was removed."
                 : message == ManageMessageId.Error ? "An error has occurred."
                 : "";
+
             var user = await UserManager.FindByIdAsync(User.Identity.GetUserId());
             if (user == null)
             {
                 return View("Error");
             }
+
             var userLogins = await UserManager.GetLoginsAsync(User.Identity.GetUserId());
             var otherLogins = AuthenticationManager.GetExternalAuthenticationTypes().Where(auth => userLogins.All(ul => auth.AuthenticationType != ul.LoginProvider)).ToList();
             ViewBag.ShowRemoveButton = user.PasswordHash != null || userLogins.Count > 1;
@@ -432,32 +444,18 @@ namespace IdentitySample.Controllers
                     var uid = User.Identity.GetUserId();
                     var user = await UserManager.FindByIdAsync(uid);
                     var googleAuthClaim = UserManager.GetClaims(uid).FirstOrDefault(x => x.Type == Claims.GoogleAuthSecret);
-                    if (googleAuthClaim == null)
-                    {
-                        await UserManager.AddClaimAsync(uid, new Claim(Claims.GoogleAuthSecret, model.SecretKey));
-                    }
-                    else
+                    if (googleAuthClaim != null)
                     {
                         await UserManager.RemoveClaimAsync(uid, new Claim(Claims.GoogleAuthSecret, model.SecretKey));
-                        await UserManager.AddClaimAsync(uid, new Claim(Claims.GoogleAuthSecret, model.SecretKey));
                     }
+                    await UserManager.AddClaimAsync(uid, new Claim(Claims.GoogleAuthSecret, model.SecretKey));
+
                     return RedirectToAction("Index", "Manage");
                 }
                 else
                     ModelState.AddModelError("Code", "The Code is not valid");
             }
             return View(model);
-        }
-
-        public enum ManageMessageId
-        {
-            AddPhoneSuccess,
-            ChangePasswordSuccess,
-            SetTwoFactorSuccess,
-            SetPasswordSuccess,
-            RemoveLoginSuccess,
-            RemovePhoneSuccess,
-            Error
         }
     }
 }
